@@ -1,37 +1,30 @@
-process.env.UV_THREADPOOL_SIZE = 1;
-const cluster = require('cluster');
+const express = require('express');
+const crypto = require('crypto');
+const Worker = require('webworker-threads').Worker;
+const app = express();
 
-// console.log(cluster.isMaster); true for inital
+app.get('/', (req, res) => {
+  const worker = new Worker(function(){
+    this.onmessage = function(){
+      let counter = 0;
+      while (counter < 1e9) {
+        counter ++;
+      }
 
-//is the file being executed in master mode?
-if(cluster.isMaster){
-    //cause index.js to be excuted *again* but in child mode
-    cluster.fork();
-    // cluster.fork();
-    // cluster.fork();
-    // cluster.fork();
-}else{
-    // I am a child. I am going to act like a server and do nothing else
-    const express = require('express');
-    const crypto = require('crypto');
-    const app = express();
-    // function doWork(duration){
-    //   const start = Date.now();
-    //   while ( Date.now() - start < duration ){}
-    // }
+      postMessage(counter);
+    };
+  });
 
-    //this is to add in replacment of dowork make actual use of computation
+  worker.onmessage = function(message){
+    console.log(message.data);
+    res.send('' + message.data);
+  };
 
-    app.get('/', (req, res) => {
-      // doWork(5000);
-      crypto.pbkdf2('a', 'b', 100000, 512, 'sha512', () => {
-        res.send('hi there');
-      });
-    });
+  worker.postMessage();
+});
 
-    app.get('/fast', (req, res) => {
-      res.send('this was fast');
-    });
+app.get('/fast', (req, res) => {
+  res.send('this was fast');
+});
 
-    app.listen(3000);
-}
+app.listen(3000);
